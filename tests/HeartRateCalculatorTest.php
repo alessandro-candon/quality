@@ -70,6 +70,9 @@ class HeartRateCalculatorTest extends TestCase
             ->getMax($isMale, $age);
     }
 
+    /**
+     * @return array
+     */
     public function calculateAgeExceptionDataProvider()
     {
         return [
