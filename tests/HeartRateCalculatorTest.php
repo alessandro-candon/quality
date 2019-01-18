@@ -45,4 +45,14 @@ class HeartRateCalculatorTest extends TestCase
                 ->getMax(false, 27)
         );
     }
+
+    /**
+     * @throws \Exception
+     */
+    public function test_calculateAgeException()
+    {
+        $this->expectException(\Exception::class);
+        (new HeartRateCalculator())
+            ->getMax(false, 10);
+    }
 }
