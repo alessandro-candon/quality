@@ -1,0 +1,157 @@
+pipeline {
+    agent any
+    stages{
+
+        stage('PHP Code Sniffer') {
+            agent {
+                docker {
+                    image 'acando14/php7.2-composer:latest'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh "curl -OL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar"
+                sh "php phpcs.phar --standard=PSR1 --extensions=php --encoding=utf8 --report=full src"
+                sh "php phpcs.phar --standard=PSR2 --extensions=php --encoding=utf8 --report=full src"
+            }
+        }
+
+        stage('PHP Security check') {
+            agent {
+                docker {
+                    image 'acando14/php7.2-composer:latest'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh "curl -OL http://get.sensiolabs.org/security-checker.phar"
+                sh "php security-checker.phar security:check composer.lock"
+            }
+        }
+
+        stage('Run tests for PR') {
+            agent {
+                docker {
+                    image 'acando14/did-dc:latest'
+                    args '--privileged -u root:root'
+                    reuseNode true
+                }
+            }
+            when {
+                not {
+                    anyOf {
+                        branch 'master'
+                        branch 'develop'
+                    }
+                }
+            }
+            steps {
+                dir('jenkins-ci-pipelines') {
+                    git url: "git@github.com:dktunited/jenkins-ci-pipelines.git", branch: 'master', credentialsId: 'github'
+                }
+                sh "dockerd &"
+                sh "cp -a jenkins-ci-pipelines/Docker-env-php-parallel/. ."
+
+                sh "docker-compose -f docker-compose.yaml up -d --no-deps --build"
+                sh "docker exec php sh -c './run-tests.sh'"
+
+                sh "docker-compose stop"
+                sh "docker-compose down --rmi all -v --remove-orphans"
+            }
+        }
+
+        stage('Run tests only on Master and Develop') {
+            agent {
+                docker {
+                    image 'acando14/did-dc:latest'
+                    args '--privileged -u root:root'
+                    reuseNode true
+                }
+            }
+            when {
+                anyOf {
+                    branch 'master'
+                    branch 'develop'
+                }
+            }
+            steps {
+                dir('jenkins-ci-pipelines') {
+                    git url: "git@github.com:dktunited/jenkins-ci-pipelines.git", branch: 'master', credentialsId: 'github'
+                }
+                sh "dockerd &"
+                sh "cp -a jenkins-ci-pipelines/Docker-env-php-parallel/. ."
+
+                sh "docker-compose -f docker-compose.yaml up -d --no-deps --build"
+                sh "docker exec php sh -c './run-tests-coverage.sh'"
+
+                sh "docker cp php:phpunit.coverage.xml ."
+                sh "docker cp php:phpunit.report.xml ."
+
+                sh "docker-compose stop"
+                sh "docker-compose down --rmi all -v --remove-orphans"
+            }
+        }
+
+        stage("Sonar only on PR") {
+            agent {
+                docker {
+                    image 'acando14/did-dc:latest'
+                    args '--privileged -u root:root'
+                    reuseNode true
+                }
+            }
+            when {
+                not {
+                    anyOf {
+                        branch 'master'
+                        branch 'develop'
+                    }
+                }
+            }
+            steps {
+                script {
+                    sh "rm -rf jenkins-ci-pipelines"
+                    dir('jenkins-ci-pipelines') {
+                        git url: "git@github.com:dktunited/jenkins-ci-pipelines.git", branch: 'master', credentialsId: 'github'
+                    }
+                    sh "dockerd &"
+                    sh "cp -a jenkins-ci-pipelines/Docker-env-sonar/. ."
+                    sh "docker build -t sonar -f Dockerfile-sonar ."
+                    withCredentials([string(credentialsId: 'jenkins-italy', variable: 'GITHUB_ACCESS_TOKEN')]) {
+                        sh "docker run sonar:latest bin/bash -c 'sonar-scanner -Dsonar.analysis.mode=preview -Dsonar.github.repository=dktunited/dktrent-back -Dsonar.github.pullRequest=${env.CHANGE_ID} -Dsonar.github.oauth=$GITHUB_ACCESS_TOKEN'"
+                    }
+                }
+            }
+        }
+
+        stage("Sonar only on Master and develop") {
+            agent {
+                docker {
+                    image 'acando14/did-dc:latest'
+                    args '--privileged -u root:root'
+                    reuseNode true
+                }
+            }
+            when {
+                anyOf {
+                    branch 'master'
+                    branch 'develop'
+                }
+            }
+            steps {
+                script {
+                    sh "rm -rf jenkins-ci-pipelines"
+                    dir('jenkins-ci-pipelines') {
+                        git url: "git@github.com:dktunited/jenkins-ci-pipelines.git", branch: 'master', credentialsId: 'github'
+                    }
+                    sh "dockerd &"
+                    sh "cp -a jenkins-ci-pipelines/Docker-env-sonar/. ."
+                    sh "docker build -t sonar -f Dockerfile-sonar ."
+                    withCredentials([string(credentialsId: 'jenkins-italy', variable: 'GITHUB_ACCESS_TOKEN')]) {
+                        sh "docker run sonar:latest bin/bash -c 'sonar-scanner -X'"
+                    }
+                }
+            }
+        }
+    }
+}
