@@ -33,4 +33,16 @@ class HeartRateCalculatorTest extends TestCase
             ->getMax(true, 27)
         );
     }
+
+    /**
+     * @throws \Exception
+     */
+    public function test_calculateForFemale()
+    {
+        $this->assertEquals(
+            190.1,
+            (new HeartRateCalculator())
+                ->getMax(false, 27)
+        );
+    }
 }
