@@ -23,27 +23,38 @@ class HeartRateCalculatorTest extends TestCase
     }
 
     /**
+     * @dataProvider calculateForMaleDataProvider
+     * @param boolean $isMale
+     * @param int $age
+     * @param float $expected
      * @throws \Exception
      */
-    public function test_calculateForMale()
+    public function test_calculateForMale($isMale, $age, $expected)
     {
         $this->assertEquals(
-            192.4,
+            $expected,
             (new HeartRateCalculator())
-            ->getMax(true, 27)
+                ->getMax($isMale, $age)
         );
     }
 
     /**
-     * @throws \Exception
+     * @return array
      */
-    public function test_calculateForFemale()
+    public function calculateForMaleDataProvider()
     {
-        $this->assertEquals(
-            190.1,
-            (new HeartRateCalculator())
-                ->getMax(false, 27)
-        );
+        return [
+            [
+                true,
+                14,
+                202.8
+            ],
+            [
+                false,
+                14,
+                199.2
+            ]
+        ];
     }
 
     /**
