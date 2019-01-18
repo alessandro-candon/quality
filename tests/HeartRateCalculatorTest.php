@@ -14,10 +14,23 @@ use src\HeartRateCalculator;
  */
 class HeartRateCalculatorTest extends TestCase
 {
-    public function test_instantiateClass(){
+    public function test_instantiateClass()
+    {
         $this->assertInstanceOf(
             HeartRateCalculator::class,
             (new HeartRateCalculator())
+        );
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function test_calculateForMale()
+    {
+        $this->assertEquals(
+            192.4,
+            (new HeartRateCalculator())
+            ->getMax(true, 27)
         );
     }
 }
