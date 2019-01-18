@@ -58,12 +58,29 @@ class HeartRateCalculatorTest extends TestCase
     }
 
     /**
+     * @dataProvider calculateAgeExceptionDataProvider
+     * @param boolean $isMale
+     * @param integer $age
      * @throws \Exception
      */
-    public function test_calculateAgeException()
+    public function test_calculateAgeException($isMale, $age)
     {
         $this->expectException(\Exception::class);
         (new HeartRateCalculator())
-            ->getMax(false, 10);
+            ->getMax($isMale, $age);
+    }
+
+    public function calculateAgeExceptionDataProvider()
+    {
+        return [
+            [
+                true,
+                13
+            ],
+            [
+                false,
+                13
+            ]
+        ];
     }
 }
